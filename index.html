@@ -165,7 +165,7 @@ th:last-child,td:last-child{border-right:none;}
         <input type="file" id="up-prod" accept=".xlsx,.xls,.csv" multiple onchange="handleFile(this,'prod')">
       </div>
       <div class="chip">운영매장 <span id="storeCount">0</span></div>
-      <button id="shareBtn" onclick="window.shareChartData()" style="padding: 4px 10px; background: transparent; color: #7c3aed; border: 1px solid #7c3aed; border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 600; margin-left: 8px; transition: all 0.2s;" onmouseover="this.style.background='#7c3aed'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#7c3aed';">🔗 공유</button>
+      <button id="shareBtn" style="padding: 4px 10px; background: transparent; color: #7c3aed; border: 1px solid #7c3aed; border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 600; margin-left: 8px; transition: all 0.2s;" onmouseover="this.style.background='#7c3aed'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#7c3aed';">🔗 공유</button>
     </div>
   </header>
 
@@ -1936,7 +1936,7 @@ function drawChart(cArr, pArr, isCompare=false) {
       }
     }
   });
-  window.chartInst = chartInst; // 전역으로 노출
+  window.chartInst = chartInst;
 }
 window.onload = () => { 
   // 페이지 로드 시 자동 초기화하지 않음 - 사용자가 초기화 버튼을 눌렀을 때만 메시지 표시
@@ -1945,113 +1945,77 @@ window.onload = () => {
 </script>
 
 <script type="module">
-  // 1. 최신 Firebase v12 모듈 불러오기
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getDatabase, ref, push, set, get } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getDatabase, ref, push, set, get } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
-  // 2. 파이어베이스 설정 (v12 기준)
-  const firebaseConfig = {
-    apiKey: "AIzaSyDH9LfUajhXI8gGRwRzTjh_Zf7k3TNy4GA",
-    authDomain: "little-e0df7.firebaseapp.com",
-    databaseURL: "https://little-e0df7-default-rtdb.firebaseio.com",
-    projectId: "little-e0df7",
-    storageBucket: "little-e0df7.firebasestorage.app",
-    messagingSenderId: "473810447562",
-    appId: "1:473810447562:web:2e793875b5b0fd98245833",
-    measurementId: "G-GL3JNJHBFC"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDH9LfUajhXI8gGRwRzTjh_Zf7k3TNy4GA",
+  authDomain: "little-e0df7.firebaseapp.com",
+  databaseURL: "https://little-e0df7-default-rtdb.firebaseio.com",
+  projectId: "little-e0df7",
+  storageBucket: "little-e0df7.firebasestorage.app",
+  messagingSenderId: "473810447562",
+  appId: "1:473810447562:web:2e793875b5b0fd98245833",
+  measurementId: "G-GL3JNJHBFC"
+};
 
-  // 3. 초기화
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  console.log("✅ Firebase v12 초기화 완료");
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+console.log("✅ Firebase 초기화 완료");
 
-  // 4. 공유 함수를 전역으로 노출
-  window.shareChartData = function() {
-    console.log("========== 공유 버튼 클릭 ==========");
-    console.log("window.chartInst:", window.chartInst);
-    
-    if (!window.chartInst) {
-      alert("❌ 차트가 없습니다. 데이터를 먼저 로드하세요.");
-      return;
-    }
-    
-    if (!window.chartInst.data || !window.chartInst.data.labels || window.chartInst.data.labels.length === 0) {
-      alert("❌ 차트 데이터가 비어있습니다.");
-      return;
-    }
-    
-    console.log("✅ 차트 데이터 확인 완료");
-    console.log("labels:", window.chartInst.data.labels.length);
-    console.log("datasets:", window.chartInst.data.datasets.length);
-    
-    const chartData = {
-      labels: window.chartInst.data.labels,
-      datasets: window.chartInst.data.datasets.map(ds => ({ 
-        label: ds.label, 
-        data: ds.data,
-        borderColor: ds.borderColor,
-        backgroundColor: ds.backgroundColor,
-        borderDash: ds.borderDash
-      }))
-    };
-
-    console.log("🔥 Firebase 저장 시도...");
-    const newRef = push(ref(db, 'shared_results'));
-    
-    set(newRef, chartData).then(() => {
-      console.log("✅✅✅ 저장 성공! ✅✅✅");
-      const shareUrl = window.location.origin + window.location.pathname + "?id=" + newRef.key;
-      console.log("링크:", shareUrl);
-      
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        alert("✅ 공유 링크 복사 완료!\n\n" + shareUrl);
-      }).catch(() => {
-        prompt("링크를 복사하세요:", shareUrl);
-      });
-    }).catch(err => {
-      console.error("❌ 저장 실패:", err);
-      alert("❌ 저장 실패: " + err.message);
-    });
-  };
-
-  // 5. [자동 로드] 링크로 접속 시 파이어베이스에서 데이터 가져오기
-  const id = new URLSearchParams(window.location.search).get('id');
-  if (id) {
-    console.log("🔗 공유 ID 감지:", id);
-    get(ref(db, 'shared_results/' + id)).then((snap) => {
-      if (snap.exists()) {
-        console.log("✅ 공유 데이터 발견");
-        const saved = snap.val();
-        const check = setInterval(() => {
-          if (window.chartInst) {
-            console.log("✅ 차트에 데이터 적용 중...");
-            window.chartInst.data.labels = saved.labels;
-            saved.datasets.forEach((ds, i) => {
-              if (window.chartInst.data.datasets[i]) {
-                window.chartInst.data.datasets[i].data = ds.data;
-                if (ds.borderColor) window.chartInst.data.datasets[i].borderColor = ds.borderColor;
-                if (ds.backgroundColor) window.chartInst.data.datasets[i].backgroundColor = ds.backgroundColor;
-              }
-            });
-            window.chartInst.update();
-            alert("✅ 공유된 차트 데이터를 불러왔습니다!");
-            clearInterval(check);
-          }
-        }, 100);
-        
-        // 5초 타임아웃
-        setTimeout(() => {
-          clearInterval(check);
-          console.warn("⚠️ 차트 로드 타임아웃");
-        }, 5000);
-      } else {
-        console.warn("⚠️ 공유 데이터 없음");
-      }
-    }).catch(err => {
-      console.error("❌ 공유 데이터 로드 실패:", err);
-    });
+// 공유 버튼 연결
+document.getElementById('shareBtn').onclick = function() {
+  console.log("🔗 공유 버튼 클릭");
+  
+  if (!window.chartInst) {
+    alert("❌ 차트 없음");
+    return;
   }
+  
+  if (!window.chartInst.data || !window.chartInst.data.labels.length) {
+    alert("❌ 데이터 없음");
+    return;
+  }
+  
+  const chartData = {
+    labels: window.chartInst.data.labels,
+    datasets: window.chartInst.data.datasets.map(ds => ({
+      label: ds.label,
+      data: ds.data,
+      borderColor: ds.borderColor,
+      backgroundColor: ds.backgroundColor
+    }))
+  };
+  
+  const newRef = push(ref(db, 'shared_results'));
+  set(newRef, chartData).then(() => {
+    const url = window.location.origin + window.location.pathname + "?id=" + newRef.key;
+    prompt("공유 링크:", url);
+  }).catch(err => alert("저장 실패: " + err.message));
+};
+
+// 공유 링크로 접속 시 데이터 로드
+const id = new URLSearchParams(window.location.search).get('id');
+if (id) {
+  get(ref(db, 'shared_results/' + id)).then(snap => {
+    if (snap.exists()) {
+      const saved = snap.val();
+      const check = setInterval(() => {
+        if (window.chartInst) {
+          window.chartInst.data.labels = saved.labels;
+          saved.datasets.forEach((ds, i) => {
+            if (window.chartInst.data.datasets[i]) {
+              window.chartInst.data.datasets[i].data = ds.data;
+            }
+          });
+          window.chartInst.update();
+          alert("✅ 공유 데이터 로드 완료");
+          clearInterval(check);
+        }
+      }, 100);
+    }
+  });
+}
 </script>
 </body>
 </html>
