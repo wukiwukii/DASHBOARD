@@ -165,7 +165,7 @@ th:last-child,td:last-child{border-right:none;}
         <input type="file" id="up-prod" accept=".xlsx,.xls,.csv" multiple onchange="handleFile(this,'prod')">
       </div>
       <div class="chip">운영매장 <span id="storeCount">0</span></div>
-      <button id="shareBtn" style="padding: 4px 10px; background: transparent; color: #7c3aed; border: 1px solid #7c3aed; border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 600; margin-left: 8px; transition: all 0.2s;" onmouseover="this.style.background='#7c3aed'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#7c3aed';">🔗 공유</button>
+      <button id="shareBtn" onclick="window.shareChartData()" style="padding: 4px 10px; background: transparent; color: #7c3aed; border: 1px solid #7c3aed; border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 600; margin-left: 8px; transition: all 0.2s;" onmouseover="this.style.background='#7c3aed'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#7c3aed';">🔗 공유</button>
     </div>
   </header>
 
@@ -1936,6 +1936,7 @@ function drawChart(cArr, pArr, isCompare=false) {
       }
     }
   });
+  window.chartInst = chartInst; // 전역으로 노출
 }
 window.onload = () => { 
   // 페이지 로드 시 자동 초기화하지 않음 - 사용자가 초기화 버튼을 눌렀을 때만 메시지 표시
@@ -1965,88 +1966,54 @@ window.onload = () => {
   const db = getDatabase(app);
   console.log("✅ Firebase v12 초기화 완료");
 
-  // 4. [공유하기] 버튼 기능: 데이터 저장 및 링크 복사
-  // 버튼이 로드될 때까지 대기
-  setTimeout(function() {
-    const shareBtn = document.getElementById('shareBtn');
-    console.log("🔗 공유 버튼 찾기:", shareBtn ? "성공" : "실패");
+  // 4. 공유 함수를 전역으로 노출
+  window.shareChartData = function() {
+    console.log("========== 공유 버튼 클릭 ==========");
+    console.log("window.chartInst:", window.chartInst);
     
-    if (shareBtn) {
-      console.log("✅ 공유 버튼에 이벤트 연결 중...");
-      shareBtn.onclick = function() {
-        console.log("========== 공유 버튼 클릭 ==========");
-        console.log("window.chartInst 존재:", !!window.chartInst);
-        console.log("chartInst 존재:", typeof chartInst !== 'undefined' ? !!chartInst : "변수 없음");
-        
-        // chartInst 찾기 (전역 변수로 찾기)
-        const chart = window.chartInst || (typeof chartInst !== 'undefined' ? chartInst : null);
-        
-        if (!chart) {
-          console.error("❌ 차트를 찾을 수 없습니다");
-          alert("❌ 차트가 준비되지 않았습니다.\n\n'종합 요약' 탭을 클릭하여 차트를 먼저 생성해주세요.");
-          return;
-        }
-        
-        console.log("✅ 차트 발견:", chart);
-        console.log("차트 데이터:", chart.data);
-        
-        if (!chart.data || !chart.data.labels || chart.data.labels.length === 0) {
-          console.error("❌ 차트 데이터 비어있음");
-          alert("❌ 차트에 데이터가 없습니다.\n\n엑셀 파일을 업로드하고 데이터가 표시되는지 확인해주세요.");
-          return;
-        }
-        
-        console.log("✅ 차트 데이터 확인 완료");
-        console.log("- labels 개수:", chart.data.labels.length);
-        console.log("- datasets 개수:", chart.data.datasets.length);
-        
-        const chartData = {
-          labels: chart.data.labels,
-          datasets: chart.data.datasets.map(ds => ({ 
-            label: ds.label, 
-            data: ds.data,
-            borderColor: ds.borderColor,
-            backgroundColor: ds.backgroundColor,
-            borderDash: ds.borderDash
-          }))
-        };
-
-        console.log("🔥 Firebase에 저장 시도...");
-        console.log("저장할 데이터:", chartData);
-        
-        const newRef = push(ref(db, 'shared_results'));
-        
-        set(newRef, chartData).then(() => {
-          console.log("✅✅✅ Firebase 저장 성공! ✅✅✅");
-          console.log("저장된 key:", newRef.key);
-          
-          const shareUrl = window.location.origin + window.location.pathname + "?id=" + newRef.key;
-          console.log("📋 공유 링크:", shareUrl);
-          
-          navigator.clipboard.writeText(shareUrl).then(() => {
-            alert("✅ 공유 링크가 복사되었습니다!\n\n메신저에 붙여넣기 하세요:\n" + shareUrl);
-          }).catch(() => {
-            const tempInput = document.createElement("input");
-            document.body.appendChild(tempInput);
-            tempInput.value = shareUrl;
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            alert("✅ 공유 링크가 복사되었습니다!\n\n" + shareUrl);
-          });
-        }).catch(err => {
-          console.error("❌❌❌ Firebase 저장 실패 ❌❌❌");
-          console.error("에러 상세:", err);
-          console.error("에러 메시지:", err.message);
-          console.error("에러 코드:", err.code);
-          alert("❌ 저장 실패!\n\n에러: " + err.message + "\n\nF12 콘솔을 확인해주세요.");
-        });
-      };
-      console.log("✅ 공유 버튼 이벤트 연결 완료");
-    } else {
-      console.error("❌ 공유 버튼을 찾을 수 없습니다!");
+    if (!window.chartInst) {
+      alert("❌ 차트가 없습니다. 데이터를 먼저 로드하세요.");
+      return;
     }
-  }, 500);
+    
+    if (!window.chartInst.data || !window.chartInst.data.labels || window.chartInst.data.labels.length === 0) {
+      alert("❌ 차트 데이터가 비어있습니다.");
+      return;
+    }
+    
+    console.log("✅ 차트 데이터 확인 완료");
+    console.log("labels:", window.chartInst.data.labels.length);
+    console.log("datasets:", window.chartInst.data.datasets.length);
+    
+    const chartData = {
+      labels: window.chartInst.data.labels,
+      datasets: window.chartInst.data.datasets.map(ds => ({ 
+        label: ds.label, 
+        data: ds.data,
+        borderColor: ds.borderColor,
+        backgroundColor: ds.backgroundColor,
+        borderDash: ds.borderDash
+      }))
+    };
+
+    console.log("🔥 Firebase 저장 시도...");
+    const newRef = push(ref(db, 'shared_results'));
+    
+    set(newRef, chartData).then(() => {
+      console.log("✅✅✅ 저장 성공! ✅✅✅");
+      const shareUrl = window.location.origin + window.location.pathname + "?id=" + newRef.key;
+      console.log("링크:", shareUrl);
+      
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert("✅ 공유 링크 복사 완료!\n\n" + shareUrl);
+      }).catch(() => {
+        prompt("링크를 복사하세요:", shareUrl);
+      });
+    }).catch(err => {
+      console.error("❌ 저장 실패:", err);
+      alert("❌ 저장 실패: " + err.message);
+    });
+  };
 
   // 5. [자동 로드] 링크로 접속 시 파이어베이스에서 데이터 가져오기
   const id = new URLSearchParams(window.location.search).get('id');
