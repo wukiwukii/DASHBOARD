@@ -3,186 +3,454 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>리틀그라운드 통합 MD 대시보드</title>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <title>매출 현황 대시보드 - 공유 가능</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* v_27.html의 원본 스타일 100% 보존 */
-        :root { --bg-color: #0d0d0d; --card-bg: #1a1a1a; --text-color: #e0e0e0; --accent-color: #00e676; --grid-color: #333; }
-        body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Pretendard', -apple-system, sans-serif; margin: 0; padding: 20px; line-height: 1.6; }
-        .dashboard-container { max-width: 1400px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--grid-color); padding-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
-        .header h1 span { color: var(--accent-color); font-size: 14px; margin-left: 10px; font-weight: normal; }
-        .upload-btn { background: var(--accent-color); color: #000; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: 700; transition: 0.2s; border: none; }
-        .upload-btn:hover { opacity: 0.9; transform: translateY(-2px); }
-        .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
-        .card { background: var(--card-bg); padding: 24px; border-radius: 12px; border: 1px solid var(--grid-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .card h3 { margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #888; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th { color: #555; font-weight: 600; padding: 12px; border-bottom: 2px solid var(--grid-color); text-align: center; }
-        td { padding: 12px; border-bottom: 1px solid var(--grid-color); text-align: right; }
-        .brand-col { text-align: left; color: var(--accent-color); font-weight: bold; }
-        #sales-table tbody tr:hover { background: rgba(0,230,118,0.05); }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .upload-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .file-input-label:hover {
+            transform: scale(1.05);
+        }
+        .share-button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .share-button:hover {
+            background: #059669;
+            transform: scale(1.05);
+        }
+        .share-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status.loading {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #764ba2;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: bold;
+            color: #667eea;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
     </style>
 </head>
 <body>
-
-<div class="dashboard-container">
-    <div class="header">
-        <h1>LITTLEGROUND <span>CORPORATE HQ SALES MD</span></h1>
-        <label for="file-upload" class="upload-btn">EXCEL UPLOAD</label>
-        <input type="file" id="file-upload" hidden accept=".xlsx, .xls">
-    </div>
-
-    <div class="chart-grid">
-        <div class="card">
-            <h3>브랜드별 매출 비중 (원본 데이터)</h3>
-            <div style="height: 350px;"><canvas id="brandChart"></canvas></div>
+    <div class="container">
+        <div class="header">
+            <h1>📊 매출 현황 대시보드</h1>
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+                    <label for="fileInput" class="file-input-label">📁 엑셀 파일 업로드</label>
+                </div>
+                <button id="shareButton" class="share-button" disabled>🔗 공유 링크 복사</button>
+                <div id="status" class="status" style="display: none;"></div>
+            </div>
         </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2>총 매출</h2>
+                <div class="stat-value" id="totalSales">0원</div>
+            </div>
+            <div class="card">
+                <h2>총 거래 건수</h2>
+                <div class="stat-value" id="totalCount">0건</div>
+            </div>
+            <div class="card">
+                <h2>평균 거래액</h2>
+                <div class="stat-value" id="avgSales">0원</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2>브랜드별 매출</h2>
+                <div class="chart-container">
+                    <canvas id="brandChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2>점포별 매출 TOP 10</h2>
+                <div class="chart-container">
+                    <canvas id="storeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
-            <h3>점포별 실적 추이</h3>
-            <div style="height: 350px;"><canvas id="storeChart"></canvas></div>
+            <h2>상세 데이터</h2>
+            <div style="overflow-x: auto;">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>브랜드명</th>
+                            <th>점포명</th>
+                            <th>금액</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <h3>세부 판매 내역</h3>
-        <table id="sales-table">
-            <thead>
-                <tr>
-                    <th style="text-align: left;">브랜드</th>
-                    <th>매장명</th>
-                    <th>판매금액 (1원 단위)</th>
-                    <th>판매일자</th>
-                </tr>
-            </thead>
-            <tbody>
-                </tbody>
-        </table>
-    </div>
-</div>
+    <script>
+        // Supabase 클라이언트 초기화
+        const SUPABASE_URL = 'https://evmzjfwtbinznbxcsval.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2bXpqZnd0Ymluem5ieGNzdmFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzcyODI2ODEsImV4cCI6MjA1Mjg1ODY4MX0.qo4kYZ5vLPZ-i__4AslXvGjh8TqDEA8E9vVL5yJh5O8';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-<script>
-    let bChart = null;
-    let sChart = null;
+        let currentSessionId = null;
+        let brandChart = null;
+        let storeChart = null;
 
-    // [기능 1] 페이지 접속 시 DB에서 데이터 가져오기
-    window.onload = async () => {
-        try {
-            const res = await fetch('/api/data');
-            const savedData = await res.json();
-            if (savedData && savedData.length > 0) {
-                // DB 데이터를 v_27 원본 형식에 맞춰 렌더링
-                renderDashboard(savedData);
+        // 페이지 로드 시 URL에서 세션 확인
+        window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session');
+            
+            if (sessionId) {
+                await loadDataFromSession(sessionId);
             }
-        } catch (err) { console.error("Data Load Error:", err); }
-    };
+        });
 
-    // [기능 2] 엑셀 업로드 시 DB 저장 로직 (v_27 로직 보존)
-    document.getElementById('file-upload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
+        // 파일 업로드 이벤트
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-        reader.onload = async function(event) {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(sheet);
+            showStatus('파일 처리 중...', 'loading');
 
-            // [절사 없음] 엑셀의 원본 amount를 그대로 가져와서 서버로 전송
-            const itemsToSave = jsonData.map(row => ({
-                brand: row['브랜드'] || row['brand'],
-                store: row['매장'] || row['store'],
-                amount: Number(row['금액'] || row['amount']), // 1원 단위 보존
-                date: String(row['날짜'] || row['date'])
+            try {
+                const data = await readExcelFile(file);
+                await saveToSupabase(file.name, data);
+                renderDashboard(data);
+                showStatus('✅ 업로드 완료! 이제 공유 링크를 복사할 수 있습니다.', 'success');
+                document.getElementById('shareButton').disabled = false;
+            } catch (error) {
+                showStatus('❌ 오류: ' + error.message, 'error');
+                console.error(error);
+            }
+        });
+
+        // 공유 버튼 클릭
+        document.getElementById('shareButton').addEventListener('click', () => {
+            if (!currentSessionId) return;
+            
+            const shareUrl = `${window.location.origin}${window.location.pathname}?session=${currentSessionId}`;
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showStatus('🎉 링크가 복사되었습니다! 카톡, 메일 등으로 공유하세요.', 'success');
+            });
+        });
+
+        // 엑셀 파일 읽기
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        resolve(jsonData);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsBinaryString(file);
+            });
+        }
+
+        // Supabase에 저장
+        async function saveToSupabase(fileName, data) {
+            // 1. 세션 생성
+            const { data: session, error: sessionError } = await supabaseClient
+                .from('upload_sessions')
+                .insert({
+                    file_name: fileName,
+                    row_count: data.length
+                })
+                .select()
+                .single();
+
+            if (sessionError) throw sessionError;
+
+            currentSessionId = session.id;
+
+            // 2. 데이터 저장
+            const salesData = data.map(row => ({
+                session_id: session.id,
+                brand_name: row['브랜드명'] || '',
+                store_name: row['점포명'] || '',
+                amount: parseInt(row['금액']) || 0
             }));
 
-            const saveRes = await fetch('/api/data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: itemsToSave })
+            const { error: dataError } = await supabaseClient
+                .from('sales_data')
+                .insert(salesData);
+
+            if (dataError) throw dataError;
+        }
+
+        // 세션에서 데이터 불러오기
+        async function loadDataFromSession(sessionId) {
+            showStatus('데이터 불러오는 중...', 'loading');
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('sales_data')
+                    .select('*')
+                    .eq('session_id', sessionId);
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    showStatus('❌ 데이터를 찾을 수 없습니다.', 'error');
+                    return;
+                }
+
+                currentSessionId = sessionId;
+                renderDashboard(data);
+                showStatus('✅ 공유된 데이터를 불러왔습니다.', 'success');
+                document.getElementById('shareButton').disabled = false;
+            } catch (error) {
+                showStatus('❌ 오류: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 대시보드 렌더링
+        function renderDashboard(data) {
+            // 총 매출
+            const totalSales = data.reduce((sum, row) => sum + (row.amount || parseInt(row['금액']) || 0), 0);
+            document.getElementById('totalSales').textContent = totalSales.toLocaleString() + '원';
+
+            // 총 건수
+            document.getElementById('totalCount').textContent = data.length.toLocaleString() + '건';
+
+            // 평균 거래액
+            const avgSales = Math.round(totalSales / data.length);
+            document.getElementById('avgSales').textContent = avgSales.toLocaleString() + '원';
+
+            // 브랜드별 집계
+            const brandData = {};
+            data.forEach(row => {
+                const brand = row.brand_name || row['브랜드명'];
+                const amount = row.amount || parseInt(row['금액']) || 0;
+                brandData[brand] = (brandData[brand] || 0) + amount;
             });
 
-            if (saveRes.ok) {
-                alert("서버와 동기화되었습니다.");
-                location.reload();
+            // 점포별 집계
+            const storeData = {};
+            data.forEach(row => {
+                const store = row.store_name || row['점포명'];
+                const amount = row.amount || parseInt(row['금액']) || 0;
+                storeData[store] = (storeData[store] || 0) + amount;
+            });
+
+            // TOP 10 점포
+            const top10Stores = Object.entries(storeData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            // 차트 업데이트
+            updateCharts(brandData, top10Stores);
+
+            // 테이블 업데이트
+            updateTable(data);
+        }
+
+        // 차트 업데이트
+        function updateCharts(brandData, top10Stores) {
+            // 브랜드 차트
+            if (brandChart) brandChart.destroy();
+            const brandCtx = document.getElementById('brandChart').getContext('2d');
+            brandChart = new Chart(brandCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(brandData),
+                    datasets: [{
+                        data: Object.values(brandData),
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // 점포 차트
+            if (storeChart) storeChart.destroy();
+            const storeCtx = document.getElementById('storeChart').getContext('2d');
+            storeChart = new Chart(storeCtx, {
+                type: 'bar',
+                data: {
+                    labels: top10Stores.map(s => s[0]),
+                    datasets: [{
+                        label: '매출액',
+                        data: top10Stores.map(s => s[1]),
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // 테이블 업데이트
+        function updateTable(data) {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = '';
+            
+            data.slice(0, 100).forEach(row => {  // 처음 100개만 표시
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.brand_name || row['브랜드명']}</td>
+                    <td>${row.store_name || row['점포명']}</td>
+                    <td>${(row.amount || parseInt(row['금액']) || 0).toLocaleString()}원</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 상태 메시지 표시
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
             }
-        };
-        reader.readAsArrayBuffer(file);
-    });
-
-    // [기능 3] v_27.html 원본 시각화 로직 그대로 사용
-    function renderDashboard(data) {
-        const tbody = document.querySelector('#sales-table tbody');
-        tbody.innerHTML = '';
-        
-        const bData = {};
-        const sData = {};
-
-        data.forEach(item => {
-            // 테이블 렌더링
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="brand-col">${item.brand_name}</td>
-                <td style="text-align:center">${item.store_name}</td>
-                <td>${item.amount.toLocaleString()}원</td>
-                <td style="text-align:center">${item.sale_date}</td>
-            `;
-            tbody.appendChild(tr);
-
-            // 차트 데이터 집계
-            const bName = item.brand_name || '기타';
-            const sName = item.store_name || '기타';
-            bData[bName] = (bData[bName] || 0) + item.amount;
-            sData[sName] = (sData[sName] || 0) + item.amount;
-        });
-
-        updateCharts(bData, sData);
-    }
-
-    function updateCharts(bData, sData) {
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } },
-            scales: {
-                y: { grid: { color: '#222' }, ticks: { color: '#555' } },
-                x: { grid: { display: false }, ticks: { color: '#555' } }
-            }
-        };
-
-        if (bChart) bChart.destroy();
-        bChart = new Chart(document.getElementById('brandChart'), {
-            type: 'doughnut',
-            data: {
-                labels: Object.keys(bData),
-                datasets: [{
-                    data: Object.values(bData),
-                    backgroundColor: ['#00e676', '#00b0ff', '#ff5252', '#ffd740', '#e040fb'],
-                    borderWidth: 0
-                }]
-            },
-            options: { ...chartOptions, cutout: '70%' }
-        });
-
-        if (sChart) sChart.destroy();
-        sChart = new Chart(document.getElementById('storeChart'), {
-            type: 'bar',
-            data: {
-                labels: Object.keys(sData),
-                datasets: [{
-                    label: '점포별 매출액',
-                    data: Object.values(sData),
-                    backgroundColor: 'rgba(0, 230, 118, 0.2)',
-                    borderColor: '#00e676',
-                    borderWidth: 2
-                }]
-            },
-            options: chartOptions
-        });
-    }
-</script>
-
+        }
+    </script>
 </body>
 </html>
