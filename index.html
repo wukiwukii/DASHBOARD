@@ -1966,11 +1966,13 @@ window.onload = () => {
   console.log("✅ Firebase v12 초기화 완료");
 
   // 4. [공유하기] 버튼 기능: 데이터 저장 및 링크 복사
-  window.addEventListener('DOMContentLoaded', function() {
+  // 버튼이 로드될 때까지 대기
+  setTimeout(function() {
     const shareBtn = document.getElementById('shareBtn');
     console.log("🔗 공유 버튼 찾기:", shareBtn ? "성공" : "실패");
     
     if (shareBtn) {
+      console.log("✅ 공유 버튼에 이벤트 연결 중...");
       shareBtn.onclick = function() {
         console.log("========== 공유 버튼 클릭 ==========");
         console.log("window.chartInst 존재:", !!window.chartInst);
@@ -2039,11 +2041,12 @@ window.onload = () => {
           console.error("에러 코드:", err.code);
           alert("❌ 저장 실패!\n\n에러: " + err.message + "\n\nF12 콘솔을 확인해주세요.");
         });
-        });
       };
       console.log("✅ 공유 버튼 이벤트 연결 완료");
+    } else {
+      console.error("❌ 공유 버튼을 찾을 수 없습니다!");
     }
-  });
+  }, 500);
 
   // 5. [자동 로드] 링크로 접속 시 파이어베이스에서 데이터 가져오기
   const id = new URLSearchParams(window.location.search).get('id');
